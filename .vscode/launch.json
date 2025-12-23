@@ -23,7 +23,6 @@
       "request": "launch",
       "mainClass": "com.thegame.account.AccountServiceApplication",
       "projectName": "account-service",
-      "noDebug": true,
       "console": "integratedTerminal"
     },
     {
@@ -39,7 +38,6 @@
       "request": "launch",
       "mainClass": "com.thegame.game.GameServiceApplication",
       "projectName": "game-service",
-      "noDebug": true,
       "console": "integratedTerminal"
     }
   ]
