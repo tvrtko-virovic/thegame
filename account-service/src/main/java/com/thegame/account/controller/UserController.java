@@ -1,8 +1,10 @@
 package com.thegame.account.controller;
 
+import com.thegame.account.dto.CreateUserRequestDto;
+import com.thegame.account.dto.UserResponseDto;
 import com.thegame.account.entity.User;
 import com.thegame.account.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,23 +23,25 @@ public class UserController {
 
     private final UserService userService;
 
-    @Autowired
     public UserController(UserService userService) {
         this.userService = userService;
     }
 
     /**
-     * Create a new user
+     * Register a new user (public-facing endpoint).
+     * Accepts plain password which will be securely hashed server-side.
      */
     @PostMapping
-    public ResponseEntity<?> createUser(@RequestBody CreateUserRequest request) {
+    public ResponseEntity<?> createUser(@Valid @RequestBody CreateUserRequestDto createUserRequestDto) {
         try {
             User user = userService.createUser(
-                request.getUsername(),
-                request.getEmail(),
-                request.getPasswordHash()
+                createUserRequestDto.getUsername(),
+                createUserRequestDto.getEmail(),
+                createUserRequestDto.getPassword()
             );
-            return ResponseEntity.status(HttpStatus.CREATED).body(user);
+            // Return safe response DTO without password hash
+            UserResponseDto userResponseDto = new UserResponseDto(user);
+            return ResponseEntity.status(HttpStatus.CREATED).body(userResponseDto);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -49,7 +53,7 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getUserById(@PathVariable UUID id) {
         return userService.findById(id)
-                .map(user -> ResponseEntity.ok(user))
+                .map(user -> ResponseEntity.ok(new UserResponseDto(user)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -59,7 +63,7 @@ public class UserController {
     @GetMapping("/username/{username}")
     public ResponseEntity<?> getUserByUsername(@PathVariable String username) {
         return userService.findByUsername(username)
-                .map(user -> ResponseEntity.ok(user))
+                .map(user -> ResponseEntity.ok(new UserResponseDto(user)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -69,7 +73,7 @@ public class UserController {
     @GetMapping("/email/{email}")
     public ResponseEntity<?> getUserByEmail(@PathVariable String email) {
         return userService.findByEmail(email)
-                .map(user -> ResponseEntity.ok(user))
+                .map(user -> ResponseEntity.ok(new UserResponseDto(user)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -77,27 +81,36 @@ public class UserController {
      * Get all users
      */
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
+    public ResponseEntity<List<UserResponseDto>> getAllUsers() {
         List<User> users = userService.getAllUsers();
-        return ResponseEntity.ok(users);
+        List<UserResponseDto> userResponseDtoList = users.stream()
+                .map(UserResponseDto::new)
+                .toList();
+        return ResponseEntity.ok(userResponseDtoList);
     }
 
     /**
      * Get active users only
      */
     @GetMapping("/active")
-    public ResponseEntity<List<User>> getActiveUsers() {
+    public ResponseEntity<List<UserResponseDto>> getActiveUsers() {
         List<User> users = userService.getActiveUsers();
-        return ResponseEntity.ok(users);
+        List<UserResponseDto> userResponseDtoList = users.stream()
+                .map(UserResponseDto::new)
+                .toList();
+        return ResponseEntity.ok(userResponseDtoList);
     }
 
     /**
      * Get verified users only
      */
     @GetMapping("/verified")
-    public ResponseEntity<List<User>> getVerifiedUsers() {
+    public ResponseEntity<List<UserResponseDto>> getVerifiedUsers() {
         List<User> users = userService.getVerifiedUsers();
-        return ResponseEntity.ok(users);
+        List<UserResponseDto> userResponseDtoList = users.stream()
+                .map(UserResponseDto::new)
+                .toList();
+        return ResponseEntity.ok(userResponseDtoList);
     }
 
     /**
@@ -108,7 +121,7 @@ public class UserController {
         try {
             user.setId(id); // Ensure the ID matches the path variable
             User updatedUser = userService.updateUser(user);
-            return ResponseEntity.ok(updatedUser);
+            return ResponseEntity.ok(new UserResponseDto(updatedUser));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -121,7 +134,7 @@ public class UserController {
     public ResponseEntity<?> activateUser(@PathVariable UUID id) {
         try {
             User user = userService.activateUser(id);
-            return ResponseEntity.ok(user);
+            return ResponseEntity.ok(new UserResponseDto(user));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -134,7 +147,7 @@ public class UserController {
     public ResponseEntity<?> deactivateUser(@PathVariable UUID id) {
         try {
             User user = userService.deactivateUser(id);
-            return ResponseEntity.ok(user);
+            return ResponseEntity.ok(new UserResponseDto(user));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -147,7 +160,7 @@ public class UserController {
     public ResponseEntity<?> verifyUserEmail(@PathVariable UUID id) {
         try {
             User user = userService.verifyUserEmail(id);
-            return ResponseEntity.ok(user);
+            return ResponseEntity.ok(new UserResponseDto(user));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -197,15 +210,4 @@ public class UserController {
         return ResponseEntity.ok(stats);
     }
 
-    /**
-     * Request DTO for creating users
-     */
-    @lombok.Data
-    @lombok.NoArgsConstructor
-    @lombok.AllArgsConstructor
-    public static class CreateUserRequest {
-        private String username;
-        private String email;
-        private String passwordHash;
-    }
 }

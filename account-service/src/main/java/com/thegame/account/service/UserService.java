@@ -3,6 +3,7 @@ package com.thegame.account.service;
 import com.thegame.account.entity.User;
 import com.thegame.account.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,16 +20,40 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
-     * Create a new user
+     * Create a new user with plain password (public-facing registration).
+     * The password will be hashed before storage.
      */
-    public User createUser(String username, String email, String passwordHash) {
+    public User createUser(String username, String email, String plainPassword) {
+        // Check if username already exists
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
+            throw new IllegalArgumentException("Username already exists: " + username);
+        }
+
+        // Check if email already exists
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new IllegalArgumentException("Email already exists: " + email);
+        }
+
+        // Hash the password before storing
+        String passwordHash = passwordEncoder.encode(plainPassword);
+        User user = new User(username, email, passwordHash);
+        return userRepository.save(user);
+    }
+
+    /**
+     * Create a new user with pre-hashed password (internal/admin use only).
+     * Use this method only when you already have a hashed password.
+     */
+    public User createUserWithHash(String username, String email, String passwordHash) {
         // Check if username already exists
         if (userRepository.existsByUsernameIgnoreCase(username)) {
             throw new IllegalArgumentException("Username already exists: " + username);
