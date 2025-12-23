@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Account Service Database
   account-db:
@@ -67,5 +65,3 @@ volumes:
 networks:
   thegame-network:
     driver: bridge
-
-
